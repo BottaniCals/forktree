@@ -31,7 +31,7 @@ dependencies = []
 forktree = "forktree.cli:main"
 
 [project.urls]
-Homepage = "https://github.com/BottaniCal/forktree"
+Homepage = "https://github.com/BottaniCals/forktree"
 
 [tool.setuptools.packages.find]
 where = ["src"]
