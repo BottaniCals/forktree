@@ -34,6 +34,9 @@ class TestSmoke(unittest.TestCase):
     def test_full_cycle(self):
         # init
         self.assertEqual(cli.main(["init", str(self.project)]), 0)
+        # init wrote .forktree.toml; commit it so create's dirty check passes
+        _git(self.project, "add", ".forktree.toml")
+        _git(self.project, "commit", "-q", "-m", "init forktree config")
         # create
         self.assertEqual(cli.main(["create", str(self.project), "smoke"]), 0)
         # list
