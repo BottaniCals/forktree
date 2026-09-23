@@ -1,0 +1,51 @@
+# --- Python build / venv artefacts ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+build/
+dist/
+.eggs/
+.pyc
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+
+# --- Test / tool caches ---
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+.cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# --- Editor / OS noise ---
+.vscode/
+.idea/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Local-only lock / scratch files ---
+*.lock
+*.pid
+
+# --- Bot / smoke-test scratch directory ---
+.tmp/
+
+# ---  prose runtime artifacts ---
+.prose/
+
+# --- spec artifacts ---
+.bugs/
+.specs/
+
+# --- project-local forktree state (realpath-resolved, not source-tracked) ---
+.worktrees/
