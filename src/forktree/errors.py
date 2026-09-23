@@ -206,6 +206,17 @@ def _format_note(message: str) -> str:
     return f"forktree: {_flatten(message)}"
 
 
+def emit_stderr(text: str, *, stream: IO[str] | None = None) -> None:
+    """Write ``text`` verbatim to stderr (no prefix added).
+
+    Use this for diagnostic lines you have already fully formatted (e.g.
+    section headers, manual ``forktree: warning: ...`` lines). For prefixed
+    warnings/errors, prefer :func:`warn` / :func:`emit_error`.
+    """
+    target = stream if stream is not None else sys.stderr
+    print(text, file=target)
+
+
 def emit_error(
     subcommand: str,
     reason: str,

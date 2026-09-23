@@ -12,7 +12,7 @@ from dataclasses import dataclass, field, replace
 from pathlib import Path
 from typing import Any, Mapping
 
-from forktree.errors import ConfigError, emit_stderr
+from forktree.errors import ConfigError, warn
 
 
 __all__ = [
@@ -156,13 +156,13 @@ def load_layer(path: Path, *, strict: bool) -> dict[str, Any]:
                 line=line,
                 col=col,
             ) from e
-        emit_stderr(f"forktree: warning: {msg}")
+        warn(msg)
         return {}
     except OSError as e:
         msg = f"cannot read {path}: {e}"
         if strict:
             raise ConfigError(subcommand="?", reason=msg, path=path, line=None, col=None) from e
-        emit_stderr(f"forktree: warning: {msg}")
+        warn(msg)
         return {}
     return data
 
@@ -226,7 +226,7 @@ def resolve_config(
             msg = f"bad type in {src_path}: {e}"
             if strict:
                 raise ConfigError(subcommand="?", reason=msg, path=src_path, line=None, col=None) from e
-            emit_stderr(f"forktree: warning: {msg}")
+            warn(msg)
             return {}
 
     proj_typed = _safe_typed(proj_data, "project", proj_path)
