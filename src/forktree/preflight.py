@@ -186,8 +186,11 @@ def check_disk(ctx: PreflightContext) -> None:
 
 
 def check_cap(ctx: PreflightContext) -> None:
-    items = g.worktree_list_porcelain(ctx.project_path)
-    n = sum(1 for it in items if it.get("worktree"))
+    # Delegate to the shared helper so cap accounting matches doctor/list:
+    # only count worktrees under <project>/<worktrees_dir>/, ignoring the
+    # source checkout and any linked worktrees from other tools.
+    from forktree.worktree import count_forktree_worktrees
+    n = count_forktree_worktrees(ctx.project_path, ctx.cfg)
     if n >= ctx.cfg.max_count:
         raise PreflightError(
             check_name="cap",
