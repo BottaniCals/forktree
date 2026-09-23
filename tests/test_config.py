@@ -43,7 +43,7 @@ class TestLoadLayer(unittest.TestCase):
             self.assertEqual(config.load_layer(p, strict=False), {})
 
     def test_malformed_strict_raises(self):
-        from src.forktree.errors import ConfigError
+        from forktree.errors import ConfigError
         with tempfile.TemporaryDirectory() as t:
             p = Path(t) / "bad.toml"
             p.write_text("a = = 1\n")
@@ -97,21 +97,24 @@ class TestResolveConfig(unittest.TestCase):
 
 class TestAllowedRoot(unittest.TestCase):
     def test_enforce_passes_when_inside(self):
+        from src.forktree import preflight
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             sub = root / "project"
             sub.mkdir()
-            config.enforce_allowlist(sub, str(root))  # should not raise
+            preflight.enforce_allowlist(sub, str(root))  # should not raise
 
     def test_enforce_fails_outside(self):
-        from src.forktree.errors import PreflightError
+        from forktree.errors import PreflightError
+        from src.forktree import preflight
         with tempfile.TemporaryDirectory() as t:
             root = Path(t)
             other = root / "other" / "project"
             other.mkdir(parents=True)
             with self.assertRaises(PreflightError):
-                config.enforce_allowlist(other, str(root / "allowed"))
+                preflight.enforce_allowlist(other, str(root / "allowed"))
 
     def test_empty_allows_anywhere(self):
+        from src.forktree import preflight
         with tempfile.TemporaryDirectory() as t:
-            config.enforce_allowlist(Path(t), "")  # no raise
+            preflight.enforce_allowlist(Path(t), "")  # no raise

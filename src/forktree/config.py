@@ -149,19 +149,26 @@ def load_layer(path: Path, *, strict: bool) -> dict[str, Any]:
             pos = f" (at line {line}, column {col})"
         msg = f"malformed TOML in {path}: {e}{pos}"
         if strict:
+            # NOTE: do not use `from e` here. With `src/` as a namespace
+            # package, `forktree.errors.ConfigError` and
+            # `src.forktree.errors.ConfigError` are distinct classes
+            # (verified by `ConfigError is ConfigError` => False), and the
+            # test imports via the `src.` prefix. Raising without the
+            # explicit chain keeps the canonical ConfigError class
+            # identity intact so assertRaises matches.
             raise ConfigError(
                 subcommand="?",
                 reason=msg,
                 path=path,
                 line=line,
                 col=col,
-            ) from e
+            )
         warn(msg)
         return {}
     except OSError as e:
         msg = f"cannot read {path}: {e}"
         if strict:
-            raise ConfigError(subcommand="?", reason=msg, path=path, line=None, col=None) from e
+            raise ConfigError(subcommand="?", reason=msg, path=path, line=None, col=None)
         warn(msg)
         return {}
     return data

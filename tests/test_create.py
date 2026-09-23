@@ -49,7 +49,7 @@ class TestCreate(unittest.TestCase):
         self.assertEqual(actual, base_sha)
 
     def test_invalid_slug_fails_preflight(self):
-        from src.forktree.errors import PreflightError
+        from forktree.errors import PreflightError
         cfg = config.Config()
         ctx = preflight.PreflightContext(
             project_path=self.project,
@@ -70,6 +70,6 @@ class TestCreate(unittest.TestCase):
             requested_ref="HEAD",
             cfg=cfg,
         )
-        from src.forktree.errors import PreflightError
+        from forktree.errors import PreflightError
         with self.assertRaises(PreflightError):
             preflight.run_preflights(ctx)

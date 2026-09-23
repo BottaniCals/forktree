@@ -6,7 +6,7 @@ import unittest
 from pathlib import Path
 
 from src.forktree import config, preflight, worktree
-from src.forktree.errors import PreflightError
+from forktree.errors import PreflightError
 
 
 def _git(cwd, *args):

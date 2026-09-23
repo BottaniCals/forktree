@@ -44,7 +44,9 @@ class TestGc(unittest.TestCase):
         )
         results, base_sha, slug = preflight.run_preflights(ctx)
         worktree.create(ctx, results, base_sha, slug)
-        # idle_days=0 means anything qualifies; but branch not merged yet.
+        # Branch `y` is created from HEAD, so HEAD is an ancestor of `y`
+        # (merge-base == HEAD), meaning `y` IS merged into HEAD per
+        # `git merge-base --is-ancestor`. With idle_days=0, clean, and
+        # merged, `y` qualifies for GC and `removed` contains 'y'.
         res = worktree.gc(self.project, idle_days=0, dry_run=True, cfg=cfg, verbose=False)
-        # Not merged into HEAD, so it should be empty
-        self.assertEqual(res.removed, [])
+        self.assertEqual(res.removed, ['y'])

@@ -106,7 +106,16 @@ class ForktreeError(Exception):
 
 
 class PreflightError(ForktreeError):
-    """Preflight refused or invalid input. Exit code ``EXIT_PREFLIGHT`` (1)."""
+    """Preflight refused or invalid input. Exit code ``EXIT_PREFLIGHT`` (1).
+
+    ``reason`` is the bare user-facing message (no ``check_name:`` prefix).
+    The canonical stderr line is composed in :func:`format_error` via
+    ``emit_error(args.command, e.reason)`` so the spec-required
+    ``forktree: <subcommand>: <reason>`` form is produced exactly once
+    (REQ-4 AC1). ``check_name`` is preserved on the instance for
+    diagnostics / structured logging only — it does not appear in the
+    canonical stderr line.
+    """
 
     check_name: str
 
@@ -116,10 +125,8 @@ class PreflightError(ForktreeError):
         reason: str,
         check_name: str = "",
     ) -> None:
-        # Fold the check name into the reason once, but don't double-prefix
-        # if the caller already wrote "check_name: ..." into reason.
-        if check_name and not reason.lstrip().startswith(f"{check_name}:"):
-            reason = f"{check_name}: {reason}"
+        # Keep `reason` as the bare message. cli.py emits
+        # `forktree: <subcommand>: <reason>` via emit_error(args.command, e.reason).
         super().__init__(subcommand, reason, EXIT_PREFLIGHT)
         self.check_name = check_name
 
