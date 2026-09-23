@@ -1,6 +1,6 @@
 # AGENTS.md — forktree
 
-_Project house rules for AI coding agents and human contributors._
+_Project house rules for AI coding agents._
 
 ## What this is
 
