@@ -23,7 +23,6 @@ forktree/
 ├── LICENSE
 ├── README.md           # public entry point; keep short
 ├── pyproject.toml      # PEP 621; entry point `forktree = forktree.cli:main`
-├── .specs/forktree-mvp/  # requirements / design / tasks / review — reference docs
 ├── src/forktree/
 │   ├── __init__.py
 │   ├── cli.py          # argparse + entry point
@@ -92,5 +91,3 @@ MVP is implemented. PyPI publish is the maintainer's call when ready:
 ```bash
 python3.11 -m build && python3.11 -m twine upload dist/*
 ```
-
-Verify name availability before publishing — there are squatters on similar names (`gitgrove.dev`, several GitHub/npm projects on `gitgrove`). Renald handles the actual upload.

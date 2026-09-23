@@ -36,14 +36,14 @@ That idiom — capture stdout into a variable, route stderr to a file — is the
 
 ## Subcommands
 
-| Subcommand | What it does |
-|------------|--------------|
-| `create` | Create a new worktree, after running seven safety pre-flights. |
-| `list` | List existing worktrees for a project. |
-| `remove` | Remove a worktree (with optional `--force-if-lossless`). |
-| `gc` | Garbage-collect stale worktrees by age and merge status. |
-| `init` | Write `.forktree.toml` with the effective resolved config. |
-| `doctor` | Print a diagnostics report (always exits `0`). |
+| Subcommand | What it does                                                   |
+| ---------- | -------------------------------------------------------------- |
+| `create`   | Create a new worktree, after running seven safety pre-flights. |
+| `list`     | List existing worktrees for a project.                         |
+| `remove`   | Remove a worktree (with optional `--force-if-lossless`).       |
+| `gc`       | Garbage-collect stale worktrees by age and merge status.       |
+| `init`     | Write `.forktree.toml` with the effective resolved config.     |
+| `doctor`   | Print a diagnostics report (always exits `0`).                 |
 
 Run `forktree <subcommand> --help` for the full flag reference.
 
@@ -61,12 +61,12 @@ Run `forktree <subcommand> --help` for the full flag reference.
 
 ## Exit codes
 
-| Code | Meaning |
-|------|---------|
-| `0` | Success |
-| `1` | Preflight refused the operation |
-| `2` | Git op failed, setup hook failed, or usage error |
-| `3` | Config error in `--strict` / `FORKTREE_STRICT=1` |
+| Code | Meaning                                          |
+| ---- | ------------------------------------------------ |
+| `0`  | Success                                          |
+| `1`  | Preflight refused the operation                  |
+| `2`  | Git op failed, setup hook failed, or usage error |
+| `3`  | Config error in `--strict` / `FORKTREE_STRICT=1` |
 
 ## Configuration
 
