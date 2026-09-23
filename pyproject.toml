@@ -1,0 +1,40 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "forktree"
+version = "0.1.0"
+description = "A stdlib-only Python CLI that wraps git worktree add/list/remove with safety pre-flights, TOML configuration, and an opt-in setup hook."
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "BottaniCals" },
+]
+keywords = ["git", "worktree", "cli"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Environment :: Console",
+  "Intended Audience :: Developers",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Operating System :: MacOS",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.11",
+  "Programming Language :: Python :: 3 :: Only",
+  "Topic :: Software Development :: Version Control :: Git",
+]
+dependencies = []
+
+[project.scripts]
+forktree = "forktree.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/BottaniCals/forktree"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.setuptools.package-data]
+forktree = ["py.typed"]
