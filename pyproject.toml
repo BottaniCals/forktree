@@ -10,7 +10,7 @@ readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "MIT" }
 authors = [
-  { name = "BottaniCal" },
+  { name = "BottaniCals" },
 ]
 keywords = ["git", "worktree", "cli"]
 classifiers = [

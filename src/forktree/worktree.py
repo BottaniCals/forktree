@@ -26,6 +26,7 @@ __all__ = [
     "gc",
     "run_setup_hook",
     "rollback",
+    "count_forktree_worktrees",
 ]
 
 
@@ -240,6 +241,30 @@ def _info_from_porcelain(project_path: Path, cfg: Config, blocks: list[dict[str,
 def list_worktrees(project_path: Path, cfg: Config) -> list[WorktreeInfo]:
     blocks = g.worktree_list_porcelain(project_path)
     return _info_from_porcelain(project_path, cfg, blocks)
+
+
+def count_forktree_worktrees(project_path: Path, cfg: Config) -> int:
+    """Count worktrees under ``<project>/<cfg.worktrees_dir>/`` only.
+
+    ``git worktree list --porcelain`` always includes the source checkout
+    itself plus any linked worktrees elsewhere in ``.git/worktrees/`` (e.g.
+    ``.kilo/worktrees/<name>`` directories left by other tools). Use this
+    helper for cap accounting so non-forktree worktrees don't inflate the
+    count.
+    """
+    wt_dir = (project_path / cfg.worktrees_dir).resolve()
+    n = 0
+    for b in g.worktree_list_porcelain(project_path):
+        path_str = b.get("worktree", "")
+        if not path_str:
+            continue
+        path = Path(path_str).resolve()
+        try:
+            path.relative_to(wt_dir)
+        except ValueError:
+            continue
+        n += 1
+    return n
 
 
 def remove(

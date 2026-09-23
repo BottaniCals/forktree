@@ -9,6 +9,7 @@ from pathlib import Path
 from typing import Any, Mapping, Sequence
 
 from forktree import output, worktree, doctor, preflight
+from forktree import __version__
 from forktree.config import Config, Provenance, resolve_config
 from forktree.errors import (
     EXIT_OK,
@@ -35,6 +36,7 @@ def build_parser() -> argparse.ArgumentParser:
         description=f"forktree — git worktree wrapper with safety preflights. {_STDOUT_STDERR_NOTE}",
     )
     p.add_argument("--strict", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--version", action="version", version=f"forktree {__version__}")
     sub = p.add_subparsers(dest="command", required=True)
 
     def common_strict(sp):

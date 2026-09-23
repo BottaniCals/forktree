@@ -87,8 +87,8 @@ def collect_report(
     # 4. Cap usage
     try:
         if g.is_git_repo(pp):
-            items = g.worktree_list_porcelain(pp)
-            count = sum(1 for it in items if it.get("worktree"))
+            from forktree.worktree import count_forktree_worktrees
+            count = count_forktree_worktrees(pp, cfg)
         else:
             count = 0
         cap_lines = [f"current count = {count}, max_count = {cfg.max_count}"]
