@@ -6,7 +6,7 @@ _Project house rules for Cedar and OpenProse subagents._
 
 `forktree` is a Python 3.11+ stdlib-only CLI wrapping `git worktree add/list/remove` with safety pre-flights, TOML configuration, and an opt-in setup hook. Public MVP.
 
-The full design is in `SPEC.md` — read it first, treat it as authoritative for scope, CLI surface, error model, and exit codes.
+The authoritative requirements, design, task plan, and final-review notes are in `.specs/forktree-mvp/` — read those first. The public entry point is `README.md`.
 
 ## Stack
 
@@ -15,14 +15,13 @@ The full design is in `SPEC.md` — read it first, treat it as authoritative for
 - **Dev deps:** none required; tests are stdlib `unittest`. Add `pytest` only if a contributor asks for it.
 - **Platforms:** Linux + macOS. Windows is out of MVP scope.
 
-## Repository layout (target)
+## Repository layout
 
 ```
 forktree/
-├── SPEC.md             # authoritative spec — do not edit casually
 ├── AGENTS.md           # this file
 ├── LICENSE
-├── README.md           # generated/curated by implementer; keep short
+├── README.md           # public entry point; keep short
 ├── pyproject.toml      # PEP 621; entry point `forktree = forktree.cli:main`
 ├── src/forktree/
 │   ├── __init__.py
@@ -85,6 +84,10 @@ python3.11 -m unittest tests.test_smoke -v
 - Don't write data to stdout for `create` other than the absolute worktree path. No "Created worktree at..." prose on stdout — that's a stderr message at most.
 - Don't introduce a package manager file other than `pyproject.toml`.
 
-## Release process (out of scope for this MVP)
+## Release process
 
-PyPI publish: `python3.11 -m build && python3.11 -m twine upload dist/*`. Verify name availability before publishing — there are squatters on similar names. Renald handles the actual publish.
+MVP is implemented. PyPI publish is the maintainer's call when ready:
+
+```bash
+python3.11 -m build && python3.11 -m twine upload dist/*
+```
