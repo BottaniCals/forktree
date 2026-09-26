@@ -95,10 +95,6 @@ Environment variables:
 - `FORKTREE_STRICT=1` — equivalent to `--strict` on every subcommand. TOML errors exit `3` instead of warning.
 - `NO_COLOR=1` — disable ANSI color in human output.
 
-## Out of MVP scope
-
-Windows, sparse-checkout profiles, Btrfs/APFS awareness, daemons, TUI/web UI, snapshot/restore. Not built, not stubbed. Spec rationale lives in `.specs/forktree-mvp/`.
-
 ## License
 
 MIT — see [`LICENSE`](./LICENSE).
