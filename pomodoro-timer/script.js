@@ -395,6 +395,70 @@
         render();
     }
 
+    // ---------- DOMContentLoaded init & event wiring ----------
+
+    /**
+     * One-shot bootstrap invoked when the DOM is ready.
+     *
+     *   - Caches references to #timer, #count, and #status into the
+     *     module-scoped element slots so render() / reset() / start() /
+     *     pause() / tick() can update the DOM without re-querying.
+     *   - Caches references to the Start / Pause / Reset buttons.
+     *   - Synchronously reads the persisted counter from localStorage
+     *     (NFR §Performance: must complete in <=50 ms) and renders the
+     *     initial 25:00 + counter so the first paint is correct without
+     *     a layout shift.
+     *   - Attaches click listeners wiring each button to its handler.
+     *     Listeners are registered on the cached button nodes (not
+     *     re-queried inside the handlers) so a missing button simply
+     *     results in no listener being attached rather than a throw.
+     *
+     * Safe against a missing #status: the live region is only used for
+     * the completion announcement and the rest of the app continues to
+     * function without it.
+     */
+    function init() {
+        timerEl = document.getElementById("timer");
+        counterEl = document.getElementById("count");
+        statusEl = document.getElementById("status");
+
+        const startBtn = document.getElementById("start");
+        const pauseBtn = document.getElementById("pause");
+        const resetBtn = document.getElementById("reset");
+
+        // Synchronous persistence read + initial render. This must run
+        // before any user gesture so the counter reflects the persisted
+        // value on the very first paint (REQ-5 §2).
+        readCounter();
+        render();
+
+        if (startBtn !== null) {
+            startBtn.addEventListener("click", start);
+        }
+        if (pauseBtn !== null) {
+            pauseBtn.addEventListener("click", pause);
+        }
+        if (resetBtn !== null) {
+            resetBtn.addEventListener("click", reset);
+        }
+    }
+
+    // Single DOMContentLoaded listener (Task 6). The script is loaded with
+    // `defer`, so when this IIFE runs the DOM has been parsed but
+    // DOMContentLoaded has not yet fired; registering here is safe and
+    // guarantees init runs after the parser has produced the elements we
+    // query. We also short-circuit when the document is already past the
+    // "loading" state so a Node-based test harness that loads script.js
+    // after the DOM exists can call init() without waiting on an event
+    // that will never fire.
+    if (typeof document !== "undefined"
+        && typeof document.addEventListener === "function"
+        && document.readyState === "loading") {
+        document.addEventListener("DOMContentLoaded", init);
+    } else {
+        init();
+    }
+
     // Expose a minimal testing surface so future Node-based harnesses can
     // exercise the pure helpers without a DOM. The IIFE prevents any leak
     // onto `window` in production (browsers ignore this assignment).
