@@ -6,6 +6,8 @@
 
 Linux and macOS. Python 3.11+. **No third-party dependencies.**
 
+A static, dependency-free Pomodoro timer web app also lives in [`pomodoro-timer/`](./pomodoro-timer/) — see its [README](./pomodoro-timer/README.md).
+
 ## Install
 
 ```bash
