@@ -356,6 +356,98 @@ class TestDirtyCheckScenarios(_RepoCase):
         status = _git(self.project, "status", "--porcelain").stdout
         self.assertNotIn(".worktrees", status)
 
+    # -- 21..27: degenerate worktrees_dir (the root is the repo/project dir) --
+
+    def test_21_degenerate_root_still_refuses_a_modified_tracked_file(self):
+        _make_repo(self.project)
+        self.set_global_worktrees_dir(".")
+        (self.project / "README.md").write_text("changed\n", encoding="utf-8")
+        code, out, err = self.create("x")
+        self.assert_exit(code)
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn(DIRTY_MESSAGE, err.splitlines())
+
+    def test_22_degenerate_root_still_refuses_an_untracked_file(self):
+        _make_repo(self.project)
+        self.set_global_worktrees_dir(".")
+        (self.project / "other-untracked.txt").write_text("x\n", encoding="utf-8")
+        code, out, err = self.create("x")
+        self.assert_exit(code)
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn(DIRTY_MESSAGE, err.splitlines())
+
+    def test_23_degenerate_root_above_the_project_refuses_repo_level_dirt(self):
+        _make_repo(self.project)
+        sub = self.project / "sub"
+        sub.mkdir()
+        self.set_global_worktrees_dir("..")
+        (self.project / "outside.txt").write_text("x\n", encoding="utf-8")
+        code, out, err = self.create("x", project=sub)
+        self.assert_exit(code)
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn(DIRTY_MESSAGE, err.splitlines())
+
+    def test_24_degenerate_root_equal_to_the_project_refuses_in_project_dirt(self):
+        _make_repo(self.project)
+        sub = self.project / "sub"
+        sub.mkdir()
+        self.set_global_worktrees_dir(".")
+        (sub / "in-project.txt").write_text("x\n", encoding="utf-8")
+        code, out, err = self.create("x", project=sub)
+        self.assert_exit(code)
+        self.assertEqual(code, 1)
+        self.assertEqual(out, "")
+        self.assertIn(DIRTY_MESSAGE, err.splitlines())
+
+    def test_25_degenerate_root_writes_no_ignore_pattern(self):
+        _make_repo(self.project)
+        self.set_global_worktrees_dir(".")
+        exclude = self.exclude_file()
+        before = exclude.read_bytes() if exclude.exists() else b""
+        code, out, err = self.create("first")
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.assert_stdout_path(out), self.project / "first")
+        self.assertEqual(exclude.read_bytes(), before)
+        self.assertNotIn("/./", exclude.read_text(encoding="utf-8"))
+        # The user's own untracked files stay visible in `git status`.
+        (self.project / "user-file.txt").write_text("x\n", encoding="utf-8")
+        status = _git(
+            self.project, "status", "--porcelain", "--untracked-files=all",
+        ).stdout
+        self.assertIn("user-file.txt", status)
+
+    def test_26_degenerate_root_equal_to_the_project_writes_no_ignore_pattern(self):
+        _make_repo(self.project)
+        sub = self.project / "sub"
+        sub.mkdir()
+        self.set_global_worktrees_dir(".")
+        exclude = self.project / ".git" / "info" / "exclude"
+        before = exclude.read_bytes() if exclude.exists() else b""
+        code, out, err = self.create("first", project=sub)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(self.assert_stdout_path(out), sub / "first")
+        self.assertEqual(exclude.read_bytes(), before)
+        self.assertNotIn("/sub/", exclude.read_text(encoding="utf-8"))
+        # The user's own untracked files inside the project stay visible.
+        (sub / "user-file.txt").write_text("x\n", encoding="utf-8")
+        status = _git(
+            self.project, "status", "--porcelain", "--untracked-files=all",
+        ).stdout
+        self.assertIn("user-file.txt", status)
+
+    def test_27_degenerate_root_skip_dirty_check_still_reports_genuine_dirt(self):
+        _make_repo(self.project)
+        self.set_global_worktrees_dir(".")
+        (self.project / "other-untracked.txt").write_text("x\n", encoding="utf-8")
+        code, out, err = self.create("x", "--skip-dirty-check")
+        self.assert_exit(code)
+        self.assertEqual(code, 0, err)
+        self.assert_stdout_path(out)
+        self.assertIn(WARNING_MESSAGE, err.splitlines())
+
 
 class TestExcludePathspecs(_RepoCase):
     """Unit-level tests for the pure exclusion-pathspec builder."""
@@ -389,6 +481,33 @@ class TestExcludePathspecs(_RepoCase):
         _make_repo(self.project)
         ctx = self._ctx("../worktrees")
         self.assertEqual(preflight._exclude_pathspecs(ctx), [])
+
+    def test_degenerate_root_at_the_repo_top_level_yields_no_excludes(self):
+        _make_repo(self.project)
+        ctx = self._ctx(".")
+        self.assertEqual(preflight._exclude_pathspecs(ctx), [])
+
+    def test_degenerate_root_above_the_project_yields_no_excludes(self):
+        _make_repo(self.project)
+        sub = self.project / "sub"
+        sub.mkdir()
+        ctx = self._ctx("..", project=sub)
+        self.assertEqual(preflight._exclude_pathspecs(ctx), [])
+
+    def test_degenerate_root_equal_to_the_project_dir_yields_no_excludes(self):
+        _make_repo(self.project)
+        sub = self.project / "sub"
+        sub.mkdir()
+        ctx = self._ctx(".", project=sub)
+        self.assertEqual(preflight._exclude_pathspecs(ctx), [])
+
+    def test_sibling_named_with_two_dots_is_not_treated_as_degenerate(self):
+        _make_repo(self.project)
+        ctx = self._ctx("..sibling")
+        self.assertEqual(
+            preflight._exclude_pathspecs(ctx),
+            [":(exclude)..sibling", ":(exclude)..sibling/**"],
+        )
 
     def test_unresolvable_repo_root_yields_no_excludes(self):
         plain = self.root / "not-a-repo"
