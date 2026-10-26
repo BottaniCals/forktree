@@ -1,6 +1,7 @@
 """forktree.preflight — 7 ordered fail-fast checks + helpers (REQ-5..REQ-12, REQ-25)."""
 from __future__ import annotations
 
+import os
 import re
 import shutil
 import time
@@ -10,7 +11,7 @@ from typing import Final
 
 from forktree import git as g
 from forktree.config import Config
-from forktree.errors import PreflightError, emit_stderr
+from forktree.errors import GitError, PreflightError, emit_stderr
 
 
 __all__ = [
@@ -21,6 +22,8 @@ __all__ = [
     "slugify",
     "estimate_checkout_bytes",
     "required_free_bytes",
+    "worktrees_root",
+    "ensure_worktrees_ignored",
     "check_project_path",
     "check_active_operation",
     "check_slug",
@@ -86,6 +89,100 @@ def required_free_bytes(volume_total: int, checkout_bytes: int, *, pct: int, flo
     floor_part = floor_gib * (1024 ** 3)
     base = max(pct_part, floor_part)
     return base + 2 * max(0, int(checkout_bytes))
+
+
+def worktrees_root(project_path: Path, cfg: Config) -> Path:
+    """Canonical resolved path of the worktrees root for a project."""
+    return (project_path / cfg.worktrees_dir).resolve()
+
+
+def _repo_root(project_path: Path) -> Path | None:
+    """Absolute worktree top level. None when it cannot be resolved."""
+    repo_root = g.repo_toplevel(project_path)
+    if repo_root is None:
+        return None
+    return repo_root.resolve()
+
+
+def _exclude_pathspecs(ctx: PreflightContext) -> list[str]:
+    """Exclude pathspecs that hide the worktrees root from `git status`.
+
+    Returns ``[]`` when the worktrees root lies outside the repository: git
+    rejects such an exclude path with exit 128
+    (``fatal: … is outside repository``), and an out-of-repo root can never
+    show up in the repository's status anyway.
+    """
+    root = worktrees_root(ctx.project_path, ctx.cfg)
+    repo_root = _repo_root(ctx.project_path)
+    if repo_root is None:
+        return []
+    try:
+        root.relative_to(repo_root)
+    except ValueError:
+        return []
+    rel = os.path.relpath(root, ctx.project_path.resolve())
+    return [f":(exclude){rel}", f":(exclude){rel}/**"]
+
+
+def _ignore_pattern(root: Path, repo_root: Path) -> str:
+    """``info/exclude`` pattern for the worktrees root, anchored to the repo top level."""
+    rel = os.path.relpath(root, repo_root)
+    # A pattern without an internal separator would match a directory of the
+    # same name at any depth, so anchor it to the repository top level.
+    if "/" not in rel:
+        return f"/{rel}/"
+    return f"{rel}/"
+
+
+def _already_ignored(repo_root: Path, rel: str) -> bool:
+    """True iff git already ignores the worktrees root (e.g. via `.gitignore`)."""
+    try:
+        res = g.run_git(
+            repo_root, "check-ignore", "-q", "--", f"{rel}/",
+            check=False, subcommand="create",
+        )
+    except GitError:
+        return False
+    return res.returncode == 0
+
+
+def ensure_worktrees_ignored(project_path: Path, cfg: Config) -> None:
+    """Keep the worktrees root out of the user's `git status` (best-effort).
+
+    Appends one line to the repository-local ``.git/info/exclude`` — an
+    untracked, per-repository ignore file. The user's tracked ``.gitignore``
+    is never touched. The write is idempotent (the line is appended only
+    when it is not already present) and never raises: any failure degrades
+    to a stderr warning.
+    """
+    root = worktrees_root(project_path, cfg)
+    repo_root = _repo_root(project_path)
+    if repo_root is None:
+        return
+    try:
+        root.relative_to(repo_root)
+    except ValueError:
+        # Outside the repository: nothing to exclude.
+        return
+    exclude_file = g.exclude_file_path(project_path)
+    if exclude_file is None:
+        return
+    pattern = _ignore_pattern(root, repo_root)
+    rel = os.path.relpath(root, repo_root)
+    try:
+        existing = ""
+        if exclude_file.exists():
+            existing = exclude_file.read_text(encoding="utf-8", errors="replace")
+        if any(line.strip() == pattern for line in existing.splitlines()):
+            return
+        if _already_ignored(repo_root, rel):
+            return
+        exclude_file.parent.mkdir(parents=True, exist_ok=True)
+        separator = "" if (not existing or existing.endswith("\n")) else "\n"
+        with exclude_file.open("a", encoding="utf-8") as fp:
+            fp.write(f"{separator}{pattern}\n")
+    except OSError as e:
+        emit_stderr(f"forktree: warning: cannot update {exclude_file}: {e}")
 
 
 # ---------- checks ----------
@@ -200,12 +297,14 @@ def check_cap(ctx: PreflightContext) -> None:
 
 
 def check_clean(ctx: PreflightContext) -> None:
+    # The worktrees root is forktree's own artifact: it must not count as
+    # user dirt, otherwise the second and every later `create` in a project
+    # trips over the worktree forktree itself created.
+    out = g.status_porcelain_excluding(ctx.project_path, _exclude_pathspecs(ctx))
     if ctx.skip_dirty_check:
-        out = g.status_porcelain(ctx.project_path)
         if out:
             emit_stderr("forktree: warning: --skip-dirty-check set; source tree is dirty")
         return
-    out = g.status_porcelain(ctx.project_path)
     if out:
         raise PreflightError(
             check_name="clean",

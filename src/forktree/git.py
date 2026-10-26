@@ -6,11 +6,12 @@ inject commands. All other modules go through this single mockable seam
 """
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Sequence
 
 from forktree.errors import GitError
 
@@ -24,6 +25,9 @@ __all__ = [
     "rev_parse",
     "rev_parse_verify",
     "status_porcelain",
+    "status_porcelain_excluding",
+    "repo_toplevel",
+    "exclude_file_path",
     "last_commit_epoch",
     "default_branch",
     "worktree_add",
@@ -153,6 +157,68 @@ def status_porcelain(project_path: Path) -> str:
     """Return stdout of `git status --porcelain`. Empty string means clean."""
     res = run_git(project_path, "status", "--porcelain", check=True, subcommand="create")
     return res.stdout or ""
+
+
+def status_porcelain_excluding(project_path: Path, excludes: Sequence[str]) -> str:
+    """Return stdout of `git status --porcelain` with exclude pathspecs applied.
+
+    ``excludes`` holds ``:(exclude)…`` pathspecs. An exclude-only pathspec
+    keeps the whole-repository scope of the plain status call, and
+    ``--untracked-files=all`` makes git list untracked paths individually so
+    that a nested worktrees root is excluded precisely. An empty ``excludes``
+    list degrades to the plain ``git status --porcelain`` invocation.
+    """
+    specs = list(excludes)
+    if not specs:
+        return status_porcelain(project_path)
+    res = run_git(
+        project_path, "status", "--porcelain", "--untracked-files=all", *specs,
+        check=True, subcommand="create",
+    )
+    return res.stdout or ""
+
+
+def repo_toplevel(project_path: Path) -> Optional[Path]:
+    """Absolute path of the worktree top level. None when it cannot be resolved."""
+    try:
+        res = run_git(
+            project_path, "rev-parse", "--show-toplevel", check=False, subcommand="create",
+        )
+    except GitError:
+        return None
+    if res.returncode != 0:
+        return None
+    out = (res.stdout or "").strip()
+    if not out:
+        return None
+    return Path(out)
+
+
+def exclude_file_path(project_path: Path) -> Optional[Path]:
+    """Path of the repository-local ``.git/info/exclude``. None when unresolvable.
+
+    ``git rev-parse --git-path`` prints a path relative to the current
+    working directory (``.git/info/exclude`` at the repo root,
+    ``../.git/info/exclude`` from a subdirectory) but an absolute path from a
+    linked worktree, so a relative result is resolved against
+    ``project_path``.
+    """
+    try:
+        res = run_git(
+            project_path, "rev-parse", "--git-path", "info/exclude",
+            check=False, subcommand="create",
+        )
+    except GitError:
+        return None
+    if res.returncode != 0:
+        return None
+    out = (res.stdout or "").strip()
+    if not out:
+        return None
+    path = Path(out)
+    if not path.is_absolute():
+        path = project_path / path
+    return Path(os.path.normpath(path))
 
 
 def last_commit_epoch(project_path: Path, rev: str) -> Optional[int]:

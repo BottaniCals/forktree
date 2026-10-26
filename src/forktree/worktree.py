@@ -12,7 +12,11 @@ from forktree import git as g
 from forktree import output
 from forktree.config import Config
 from forktree.errors import GitError, PreflightError, emit_stderr
-from forktree.preflight import PreflightContext, PreflightResult
+from forktree.preflight import (
+    PreflightContext,
+    PreflightResult,
+    ensure_worktrees_ignored,
+)
 
 
 __all__ = [
@@ -169,6 +173,10 @@ def create(
         )
 
     branch_created = not g.branch_exists(ctx.project_path, branch)
+
+    # Keep the worktrees root out of the user's `git status`. Runs after the
+    # pre-flights (which stay read-only) and before the worktree is created.
+    ensure_worktrees_ignored(ctx.project_path, ctx.cfg)
 
     add_res = g.worktree_add(ctx.project_path, candidate, branch, base_sha)
     if add_res.returncode != 0:

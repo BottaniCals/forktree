@@ -90,6 +90,8 @@ idle_days = 14
 prune = true
 ```
 
+The worktrees root (`paths.worktrees_dir`) is kept out of your `git status`: on the first `create`, forktree appends it to the repository-local `.git/info/exclude` — an untracked, per-repository ignore file. Your tracked `.gitignore` is never modified, and the entry is written once (later `create` calls do not duplicate it). The dirty pre-flight ignores that root as well, so repeated `create` calls in the same project behave identically.
+
 Environment variables:
 
 - `FORKTREE_STRICT=1` — equivalent to `--strict` on every subcommand. TOML errors exit `3` instead of warning.
