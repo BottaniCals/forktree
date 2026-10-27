@@ -107,10 +107,21 @@ def _repo_root(project_path: Path) -> Path | None:
 def _exclude_pathspecs(ctx: PreflightContext) -> list[str]:
     """Exclude pathspecs that hide the worktrees root from `git status`.
 
-    Returns ``[]`` when the worktrees root lies outside the repository: git
-    rejects such an exclude path with exit 128
-    (``fatal: … is outside repository``), and an out-of-repo root can never
-    show up in the repository's status anyway.
+    The exclusion must never be wider than forktree's own worktrees root: an
+    exclusion that covers the repository top level — or the project directory
+    itself — would hide the user's dirt and silently disable the dirty
+    pre-flight (the status query would come back empty for every tree).
+
+    Returns ``[]`` whenever no exclusion is safe:
+
+    * the worktrees root lies outside the repository: git rejects such an
+      exclude path with exit 128 (``fatal: … is outside repository``), and an
+      out-of-repo root can never show up in the repository's status anyway;
+    * the worktrees root *is* the repository top level: the exclusion would
+      cover the whole repository;
+    * the worktrees root is the project directory or one of its ancestors:
+      the exclusion would cover the project directory (and thus the user's
+      dirt inside it).
     """
     root = worktrees_root(ctx.project_path, ctx.cfg)
     repo_root = _repo_root(ctx.project_path)
@@ -120,7 +131,15 @@ def _exclude_pathspecs(ctx: PreflightContext) -> list[str]:
         root.relative_to(repo_root)
     except ValueError:
         return []
+    if root == repo_root:
+        # The exclusion would cover the whole repository.
+        return []
     rel = os.path.relpath(root, ctx.project_path.resolve())
+    if rel == os.curdir or rel == os.pardir or rel.startswith(os.pardir + os.sep):
+        # The exclusion would cover the project directory (rel == ".") or one
+        # of its ancestors (rel == ".." / "../…"). `os.sep`-aware comparison
+        # keeps a directory literally named e.g. "..foo" out of this branch.
+        return []
     return [f":(exclude){rel}", f":(exclude){rel}/**"]
 
 
@@ -154,6 +173,10 @@ def ensure_worktrees_ignored(project_path: Path, cfg: Config) -> None:
     is never touched. The write is idempotent (the line is appended only
     when it is not already present) and never raises: any failure degrades
     to a stderr warning.
+
+    Nothing is written when the worktrees root is the repository top level or
+    the project directory itself: such a pattern would be junk (``"/./"``) or
+    would hide the user's own files from ``git status``.
     """
     root = worktrees_root(project_path, cfg)
     repo_root = _repo_root(project_path)
@@ -163,6 +186,11 @@ def ensure_worktrees_ignored(project_path: Path, cfg: Config) -> None:
         root.relative_to(repo_root)
     except ValueError:
         # Outside the repository: nothing to exclude.
+        return
+    if root == repo_root or root == project_path.resolve():
+        # Degenerate layout: the pattern would be junk ("/./") or over-broad
+        # ("/<project-dir>/"), and the latter would hide the user's own files
+        # from `git status`. Nothing is ignored instead.
         return
     exclude_file = g.exclude_file_path(project_path)
     if exclude_file is None:
