@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "forktree"
-version = "0.1.0"
+dynamic = ["version"]
 description = "A stdlib-only Python CLI that wraps git worktree add/list/remove with safety pre-flights, TOML configuration, and an opt-in setup hook."
 readme = "README.md"
 requires-python = ">=3.11"
@@ -35,6 +35,9 @@ Homepage = "https://github.com/BottaniCals/forktree"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.dynamic]
+version = { attr = "forktree.__version__" }
 
 [tool.setuptools.package-data]
 forktree = ["py.typed"]
