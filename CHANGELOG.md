@@ -6,6 +6,8 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+## [0.1.1] — 2026-10-27
+
 ### Fixed
 
 - The dirty pre-flight no longer trips over `forktree`'s own worktrees root. The source-tree check ran a bare `git status --porcelain`, so the worktrees directory (`<project>/<worktrees_dir>/`) counted as user dirt — the first `create` succeeded and every later one failed with `forktree: create: source tree is dirty; pass --skip-dirty-check to override` (exit `1`). The status query now excludes the worktrees root, and the root is appended once to the repository-local `.git/info/exclude` so the user's own `git status` stays clean. The tracked `.gitignore` is never modified.
