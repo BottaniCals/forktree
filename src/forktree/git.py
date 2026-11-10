@@ -69,6 +69,7 @@ def run_tool(
     timeout: float = 30.0,
     check: bool = True,
     subcommand: str = "?",
+    input: Optional[str] = None,
 ) -> GitResult:
     """Run an external command (argv list, no shell). On nonzero return + check=True, raise GitError."""
     try:
@@ -79,6 +80,7 @@ def run_tool(
             capture_output=True,
             text=True,
             timeout=timeout,
+            input=input,
         )
     except subprocess.TimeoutExpired as e:
         raise GitError(
@@ -297,8 +299,24 @@ def branch_delete(project_path: Path, branch: str, *, force: bool = False) -> Gi
     return run_git(project_path, "branch", flag, branch, check=False, subcommand="create")
 
 
+def _patch_ids(patches: str) -> set[str]:
+    res = run_tool(
+        ["git", "patch-id", "--stable"],
+        input=patches,
+        check=False,
+        subcommand="remove",
+    )
+    if res.returncode != 0:
+        return set()
+    return {
+        fields[0]
+        for line in res.stdout.splitlines()
+        if (fields := line.strip().split()) and fields[0]
+    }
+
+
 def is_branch_merged(project_path: Path, branch: str, into: str) -> bool:
-    """True iff <branch> is an ancestor of <into>."""
+    """True iff <branch> is merged into <into> by ancestry or patch equivalence."""
     try:
         run_git(
             project_path, "merge-base", "--is-ancestor", branch, into,
@@ -306,7 +324,59 @@ def is_branch_merged(project_path: Path, branch: str, into: str) -> bool:
         )
         return True
     except GitError:
+        pass
+
+    merge_count = run_git(
+        project_path,
+        "rev-list",
+        "--count",
+        "--min-parents=2",
+        branch,
+        f"^{into}",
+        check=False,
+        subcommand="remove",
+    )
+    if merge_count.returncode == 0 and (merge_count.stdout or "").strip() == "0":
+        cherry = run_git(
+            project_path, "cherry", into, branch, check=False, subcommand="remove",
+        )
+        if cherry.returncode == 0:
+            rows = [line.strip() for line in (cherry.stdout or "").splitlines() if line.strip()]
+            if rows and all(row.startswith("-") for row in rows):
+                return True
+
+    base_result = run_git(
+        project_path, "merge-base", branch, into, check=False, subcommand="remove",
+    )
+    if base_result.returncode != 0:
         return False
+    base = (base_result.stdout or "").strip()
+    if not base:
+        return False
+
+    branch_diff = run_git(
+        project_path, "diff", base, branch, check=False, subcommand="remove",
+    )
+    if branch_diff.returncode != 0:
+        return False
+    branch_patch_ids = _patch_ids(branch_diff.stdout or "")
+    if len(branch_patch_ids) != 1:
+        return False
+
+    target_log = run_git(
+        project_path,
+        "log",
+        "--format=commit %H",
+        "--no-merges",
+        "-p",
+        f"{base}..{into}",
+        check=False,
+        subcommand="remove",
+    )
+    if target_log.returncode != 0:
+        return False
+    target_patch_ids = _patch_ids(target_log.stdout or "")
+    return bool(branch_patch_ids & target_patch_ids)
 
 
 def has_unpushed_commits(project_path: Path, branch: str) -> bool:

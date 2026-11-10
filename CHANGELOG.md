@@ -6,6 +6,10 @@ The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and
 
 ## [Unreleased]
 
+### Fixed
+
+- `gc` and `remove` now recognize branches merged through squash, rebase, or cherry-pick workflows. Merge detection previously required the branch tip to be an ancestor of the default branch, so a squash-merged PR kept its worktree indefinitely. Detection now also uses stable patch equivalence; GC still refuses branches whose changes are not represented in the target branch.
+
 ## [0.1.1] — 2026-10-27
 
 ### Fixed
