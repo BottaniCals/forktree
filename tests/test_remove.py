@@ -20,6 +20,18 @@ def _make_repo(path: Path) -> None:
     (path / "README.md").write_text("x")
     _git(path, "add", "README.md")
     _git(path, "commit", "-q", "-m", "init")
+    _git(path, "branch", "-M", "main")
+
+
+def _commit(path: Path, name: str, content: str) -> None:
+    (path / name).write_text(content)
+    _git(path, "add", name)
+    _git(path, "commit", "-q", "-m", name)
+
+
+def _squash_merge(project: Path, branch: str) -> None:
+    _git(project, "merge", "--squash", branch)
+    _git(project, "commit", "-q", "-m", f"squash merge {branch}")
 
 
 @unittest.skipUnless(shutil.which("git"), "git not on PATH")
@@ -46,3 +58,16 @@ class TestRemove(unittest.TestCase):
         worktree.create(ctx, results, base_sha, slug)
         worktree.remove(self.project, "x", force_if_lossless=True, cfg=cfg, verbose=False)
         self.assertFalse((self.project / ".worktrees" / "x").exists())
+
+    def test_remove_squash_merged_branch_without_force(self):
+        cfg = config.Config()
+        ctx = preflight.PreflightContext(
+            project_path=self.project, slug="squashed", requested_ref="HEAD", cfg=cfg,
+        )
+        results, base_sha, slug = preflight.run_preflights(ctx)
+        created = worktree.create(ctx, results, base_sha, slug)
+        _commit(created.path, "feature.txt", "feature")
+        _squash_merge(self.project, "squashed")
+
+        worktree.remove(self.project, "squashed", force_if_lossless=False, cfg=cfg, verbose=False)
+        self.assertFalse(created.path.exists())
